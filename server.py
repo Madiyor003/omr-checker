@@ -162,6 +162,7 @@ def index():
             .btn {{ display: block; width: 100%; background: #2563eb; color: white; padding: 12px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; border: none; text-align: center; }}
             .btn-green {{ background: #10b981; margin-top: 10px; }}
             .btn-outline {{ background: white; color: #374151; border: 1.5px solid #d1d5db; margin-top: 10px; }}
+            .btn-danger {{ background: #ef4444; color: white; margin-top: 10px; }}
             input[type="file"] {{ display: none; }}
             
             #loading {{ display: none; margin: 15px 0; font-weight: bold; color: #2563eb; text-align: center; }}
@@ -223,6 +224,7 @@ def index():
                     </table>
                 </div>
                 <a href="/download-excel" class="btn btn-outline" style="text-decoration: none;">Excelda yuklab olish (.xlsx)</a>
+                <button class="btn btn-danger" onclick="clearHistory()">Ro'yxatni tozalash</button>
             </div>
         </div>
 
@@ -303,7 +305,10 @@ def index():
             }}
 
             function updateTable(tarix) {{
-                if (!tarix || tarix.length === 0) return;
+                if (!tarix || tarix.length === 0) {{
+                    historyBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#9ca3af;">Hozircha natijalar yo\\'q</td></tr>';
+                    return;
+                }}
                 let rows = '';
                 tarix.slice().reverse().forEach((item, idx) => {{
                     rows += `
@@ -316,6 +321,22 @@ def index():
                     `;
                 }});
                 historyBody.innerHTML = rows;
+            }}
+
+            async function clearHistory() {{
+                if (!confirm("Barcha natijalarni o'chirib, yangi test boshlamoqchimisiz?")) return;
+                try {{
+                    const res = await fetch('/tozalash', {{ method: 'POST' }});
+                    const data = await res.json();
+                    if (data.success) {{
+                        updateTable([]);
+                        resultDiv.innerHTML = '';
+                        previewImg.style.display = 'none';
+                        alert("Ro'yxat muvaffaqiyatli tozalandi!");
+                    }}
+                }} catch (e) {{
+                    alert("Tozalashda xatolik yuz berdi!");
+                }}
             }}
         </script>
     </body>
@@ -330,6 +351,11 @@ async def save_keys(data: dict):
             f.write(kalitlar)
         return {"success": True}
     return {"success": False, "error": "Kalitlar uzunligi 25 ta bo'lishi kerak"}
+
+@app.post("/tozalash")
+def tozalash():
+    baza_natijalar.clear()
+    return {"success": True}
 
 @app.post("/tekshirish")
 async def tekshirish(file: UploadFile = File(...), student: str = Form("Noma'lum")):
